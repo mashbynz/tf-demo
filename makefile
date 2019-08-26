@@ -4,5 +4,8 @@ init:
 apply:
 	$(CMD) terraform apply
 
+plan:
+	$(CMD) terraform plan
+
 remove:
 	$(CMD) terraform destroy
