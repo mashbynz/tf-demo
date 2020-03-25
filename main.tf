@@ -1,99 +1,85 @@
 provider "azurerm" {
-  version = "=1.28.0"
+  version = "<=1.43.0"
 }
 
 terraform {
-  backend "azurerm" {}
-  required_version = ">= 0.12"
-}
-
-# Resource Group
-resource "azurerm_resource_group" "test" {
-  name     = "demo-rg"
-  location = var.primaryLocation
-
-  tags = {
-    environment = "Dev"
-    application = "Australia East VM demo"
+  required_version = ">= 0.12.20"
+  backend "azurerm" {
   }
 }
 
-# Virtual Network
-resource "azurerm_virtual_network" "test" {
-  name                = "demo-vnet"
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
-  address_space       = ["10.0.0.0/16"]
-
-  tags = {
-    environment = "Production"
+data "terraform_remote_state" "demo_state" {
+  backend = "azurerm"
+  config = {
+    storage_account_name = var.lowerlevel_storage_account_name
+    container_name       = var.lowerlevel_container_name
+    resource_group_name  = var.lowerlevel_resource_group_name
+    key                  = var.lowerlevel_key
   }
 }
 
-# Subnets
-resource "azurerm_subnet" "Gateway" {
-  name                 = "GatewaySubnet"
-  resource_group_name  = azurerm_resource_group.test.name
-  virtual_network_name = azurerm_virtual_network.test.name
-  address_prefix       = "10.0.0.0/24"
+## Resource Group
+resource "azurerm_resource_group" "rg" {
+  for_each = var.resource_groups
+
+  name     = "${each.value.name}${var.rg_suffix}"
+  location = each.value.location
+  tags     = lookup(each.value, "tags", null) == null ? local.tags : merge(local.tags, each.value.tags)
 }
 
-resource "azurerm_subnet" "VirtualMachines" {
-  name                 = "VirtualMachines-sn"
-  resource_group_name  = azurerm_resource_group.test.name
-  virtual_network_name = azurerm_virtual_network.test.name
-  address_prefix       = "10.0.1.0/24"
+## Networks
+# VNet
+resource "azurerm_virtual_network" "vnet" {
+  for_each = var.networking_object.vnet
+
+  name                = "${each.value.name}${var.vnet_suffix}"
+  location            = each.value.location
+  resource_group_name = each.value.virtual_network_rg
+  address_space       = each.value.address_space
+  tags                = lookup(each.value, "tags", null) == null ? local.tags : merge(local.tags, each.value.tags)
+
+  dns_servers = lookup(each.value, "dns", null)
+
+  dynamic "ddos_protection_plan" {
+    for_each = lookup(each.value, "enable_ddos_std", false) == true ? [1] : []
+
+    content {
+      id     = each.value.ddos_id
+      enable = each.value.enable_ddos_std
+    }
+  }
+
+    depends_on = [
+    azurerm_resource_group.rg
+  ]
 }
 
-# Virtual Machine NIC
-resource "azurerm_network_interface" "test" {
-  name                = "demoVM-nic"
-  location            = azurerm_resource_group.test.location
-  resource_group_name = azurerm_resource_group.test.name
+# Other Subnets
+resource "azurerm_subnet" "subnet" {
+  for_each = var.networking_object.subnets
 
-  ip_configuration {
-    name                          = "VMConfig1"
-    subnet_id                     = azurerm_subnet.VirtualMachines.id
-    private_ip_address_allocation = "Dynamic"
-  }
-}
+  name                                           = each.value.name
+  resource_group_name                            = each.value.virtual_network_rg
+  virtual_network_name                           = each.value.virtual_network_name
+  address_prefix                                 = each.value.cidr
+  service_endpoints                              = lookup(each.value, "service_endpoints", [])
+  enforce_private_link_endpoint_network_policies = lookup(each.value, "enforce_private_link_endpoint_network_policies", null)
+  enforce_private_link_service_network_policies  = lookup(each.value, "enforce_private_link_service_network_policies", null)
 
-# Virtual Machine Compute
-resource "azurerm_virtual_machine" "test" {
-  name                  = "demoVM-vm"
-  location              = azurerm_resource_group.test.location
-  resource_group_name   = azurerm_resource_group.test.name
-  network_interface_ids = [azurerm_network_interface.test.id]
-  vm_size               = "Standard_B1ls"
+  dynamic "delegation" {
+    for_each = lookup(each.value, "delegation", {}) != {} ? [1] : []
 
-  # Uncomment this line to delete the OS disk automatically when deleting the VM
-  # delete_os_disk_on_termination = true
+    content {
+      name = lookup(each.value.delegation, "name", null)
 
+      service_delegation {
+        name    = lookup(each.value.delegation.service_delegation, "name", null)
+        actions = lookup(each.value.delegation.service_delegation, "actions", null)
+      }
+    }
+  }
 
-  # Uncomment this line to delete the data disks automatically when deleting the VM
-  # delete_data_disks_on_termination = true
-
-  storage_image_reference {
-    publisher = "Canonical"
-    offer     = "UbuntuServer"
-    sku       = "18.04-LTS"
-    version   = "latest"
-  }
-  storage_os_disk {
-    name              = "myosdisk1"
-    caching           = "ReadWrite"
-    create_option     = "FromImage"
-    managed_disk_type = "Standard_LRS"
-  }
-  os_profile {
-    computer_name  = "hostname"
-    admin_username = "testadmin"
-    admin_password = "Password1234!"
-  }
-  os_profile_linux_config {
-    disable_password_authentication = false
-  }
-  tags = {
-    environment = "staging"
-  }
+  depends_on = [
+    azurerm_virtual_network.vnet
+  ]
 }
