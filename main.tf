@@ -1,9 +1,10 @@
 provider "azurerm" {
-  version = "<=1.43.0"
+  # version = ">= 2.0"
+  features {}
 }
 
 terraform {
-  required_version = ">= 0.12.20"
+  # required_version = ">= 0.12.20"
   backend "azurerm" {
   }
 }
@@ -49,7 +50,7 @@ resource "azurerm_virtual_network" "vnet" {
     }
   }
 
-    depends_on = [
+  depends_on = [
     azurerm_resource_group.rg
   ]
 }
@@ -61,7 +62,7 @@ resource "azurerm_subnet" "subnet" {
   name                                           = each.value.name
   resource_group_name                            = each.value.virtual_network_rg
   virtual_network_name                           = each.value.virtual_network_name
-  address_prefix                                 = each.value.cidr
+  address_prefixes                               = lookup(each.value, "cidr", [])
   service_endpoints                              = lookup(each.value, "service_endpoints", [])
   enforce_private_link_endpoint_network_policies = lookup(each.value, "enforce_private_link_endpoint_network_policies", null)
   enforce_private_link_service_network_policies  = lookup(each.value, "enforce_private_link_service_network_policies", null)
