@@ -6,6 +6,16 @@
 2. Paste in the following content, substituting your values as appropriate:
 
 ``` 
+# az login
+# az account set -s <subscription id>
+
+# export ARM_ACCESS_KEY=$(az storage account keys list --resource-group <rg name> --account-name <storage account name> --query [0].value -o tsv)
+
+# terraform init \
+#   -backend-config="container_name=<container name>" \
+#   -backend-config="key=demo.tfstate" \
+#   -backend-config="storage_account_name=<storage account name>"
+
 ## State
 lowerlevel_storage_account_name = "<your Storage Account name>"
 lowerlevel_container_name       = "tfstate"
@@ -49,7 +59,7 @@ networking_object = {
   subnets = {
     region1_Subnet1 = {
       name                 = "subnet1"
-      cidr                 = "10.6.1.0/24"
+      cidr                 = ["10.6.1.0/24"]
       location             = "australiaeast"
       virtual_network_rg   = "demonetwork-rg"
       virtual_network_name = "demonetwork-vnet"
@@ -62,7 +72,7 @@ networking_object = {
     }
     region1_Subnet2 = {
       name                 = "subnet2"
-      cidr                 = "10.6.2.0/26"
+      cidr                 = ["10.6.2.0/26"]
       location             = "australiaeast"
       virtual_network_rg   = "demonetwork-rg"
       virtual_network_name = "demonetwork-vnet"
