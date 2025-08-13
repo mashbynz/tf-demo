@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 terraform {
   required_providers {
     azurerm = {
@@ -6,15 +5,6 @@ terraform {
       version = "<=1.43.0"
     }
   }
-=======
-provider "azurerm" {
-  # version = ">= 2.0"
-  features {}
-}
-
-terraform {
-  # required_version = ">= 0.12.20"
->>>>>>> 5e24557c49a80ae5308d2b6864294bcc46b7df03
   backend "azurerm" {
   }
 }
@@ -73,7 +63,6 @@ resource "azurerm_virtual_network" "vnet" {
 resource "azurerm_subnet" "subnet" {
   for_each = var.networking_object.subnets
 
-<<<<<<< HEAD
   name                 = each.value.name
   resource_group_name  = each.value.virtual_network_rg
   virtual_network_name = each.value.virtual_network_name
@@ -81,15 +70,6 @@ resource "azurerm_subnet" "subnet" {
   service_endpoints    = lookup(each.value, "service_endpoints", [])
   # enforce_private_link_endpoint_network_policies = lookup(each.value, "enforce_private_link_endpoint_network_policies", null)
   # enforce_private_link_service_network_policies  = lookup(each.value, "enforce_private_link_service_network_policies", null)
-=======
-  name                                           = each.value.name
-  resource_group_name                            = each.value.virtual_network_rg
-  virtual_network_name                           = each.value.virtual_network_name
-  address_prefixes                               = lookup(each.value, "cidr", [])
-  service_endpoints                              = lookup(each.value, "service_endpoints", [])
-  enforce_private_link_endpoint_network_policies = lookup(each.value, "enforce_private_link_endpoint_network_policies", null)
-  enforce_private_link_service_network_policies  = lookup(each.value, "enforce_private_link_service_network_policies", null)
->>>>>>> 5e24557c49a80ae5308d2b6864294bcc46b7df03
 
   dynamic "delegation" {
     for_each = lookup(each.value, "delegation", {}) != {} ? [1] : []
