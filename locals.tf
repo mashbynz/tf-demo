@@ -1,6 +1,9 @@
 locals {
   tags = {
-    environment   = "Demo"
-    "cost centre" = "12345"
+    team             = "MWP"
+    CreatedBy        = "Matt Ashby"
+    CustomerName     = "TI"
+    costCategory     = "Development"
+    approvingManager = "Matt Ashby"
   }
 }
